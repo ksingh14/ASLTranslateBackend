@@ -1,0 +1,6 @@
+transformers
+flask
+flask-cors
+gunicorn
+#sentence-transformers
+spacy
