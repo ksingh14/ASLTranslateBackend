@@ -2,5 +2,5 @@ transformers
 flask
 flask-cors
 gunicorn
-#sentence-transformers
+sentence-transformers
 spacy

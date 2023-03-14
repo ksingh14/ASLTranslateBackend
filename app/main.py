@@ -4,11 +4,14 @@ from flask_cors import CORS
 import spacy
 import json
 
+import numpy as np
+from numpy.linalg import norm
+
 from torchtext.data.utils import get_tokenizer
 from model import Seq2SeqTransformer
 
-# from vocab import *
-# from mask import *
+from sentence_transformers import SentenceTransformer
+
 from transform import get_transformation_fn, tensor_transform
 from translate import *
 
@@ -18,9 +21,14 @@ CORS(app)
 with open('/app/gloss_to_video.json', 'r') as f:
   gloss_to_video = json.load(f)
 
-spacy.load('en_core_web_sm')
+with open('/app/asl_dict_text_gloss_with_custom_entries.json', 'r') as f:
+  asl_dict_text_gloss = json.load(f)
+
+nlp = spacy.load('en_core_web_sm')
 
 token_transform = get_tokenizer('spacy')
+
+model_st = SentenceTransformer('all-MiniLM-L6-v2')
 
 # NCSLGR dataset text -> gloss
 # vocab_transform_src_ncslgr = torch.load('ncslgr_augmented_rare_token_replacement_vocab_transform_src_text_to_gloss.pth')
@@ -38,9 +46,9 @@ token_transform = get_tokenizer('spacy')
 # transformer_ncslgr_use_dict_text_gloss_state = torch.load('transformer_ncslgr_augmented_use_asl_dict_text_to_gloss_90epochs.pt', map_location=torch.device('cpu'))
 
 # NCSLGR dataset w/ dictionary words & adding word text -> gloss
-vocab_transform_src_ncslgr_use_dict_add_word = torch.load('ncslgr_augmented_use_asl_dict_add_word_2_vocab_transform_src_text_to_gloss.pth')
-vocab_transform_trg_ncslgr_use_dict_add_word = torch.load('ncslgr_augmented_use_asl_dict_add_word_2_vocab_transform_trg_text_to_gloss.pth')
-transformer_ncslgr_use_dict_add_word_text_gloss_state = torch.load('transformer_ncslgr_augmented_use_asl_dict_add_word_text_to_gloss_2_25epochs.pt', map_location=torch.device('cpu'))
+vocab_transform_src_ncslgr_use_dict_add_word = torch.load('ncslgr_augmented_use_asl_dict_add_word_2_vocab_transform_src_text_to_gloss_pt2.pth')
+vocab_transform_trg_ncslgr_use_dict_add_word = torch.load('ncslgr_augmented_use_asl_dict_add_word_2_vocab_transform_trg_text_to_gloss_pt2.pth')
+transformer_ncslgr_use_dict_add_word_text_gloss_state = torch.load('transformer_ncslgr_augmented_use_asl_dict_add_word_text_to_gloss_2_pt2_40epochs.pt', map_location=torch.device('cpu'))
 
 torch.manual_seed(0)
 
@@ -136,23 +144,42 @@ src_transform_ncslgr_use_dict_add_word = get_transformation_fn(token_transform, 
 def translate_text_ncslgr_use_dict_add_word():
     print("Translating with NCSLGR model with dict words and adding word")
     sentence = request.json["sentence"]
-    pred_text= translate_sentence(transformer_text_gloss_ncslgr_use_dict_add_word, sentence, src_transform_ncslgr_use_dict_add_word, vocab_transform_trg_ncslgr_use_dict_add_word)
+    tokens = nlp(sentence)
+    tokens_no_punct = [x.text for x in tokens if x.pos_ != "PUNCT"]
+    tokens_no_punct_lemmas = [x.lemma_ for x in tokens if x.pos_ != "PUNCT"]
+    sentence = " ".join(tokens_no_punct)
+    sentence_lemmas = " ".join(tokens_no_punct_lemmas)
+    if sentence in asl_dict_text_gloss or sentence.lower() in asl_dict_text_gloss or sentence_lemmas in asl_dict_text_gloss:
+        glosses = asl_dict_text_gloss.get(sentence) or asl_dict_text_gloss.get(sentence.lower())
+        max_cs = None
+        best_gloss  = None
+        for gloss in glosses:
+            cs = cosine_similarity(model_st.encode(gloss), model_st.encode(sentence))
+            if max_cs is None or cs > max_cs:
+                max_cs = cs
+                best_gloss = gloss
+        pred_text = best_gloss
+    else:
+        pred_text= translate_sentence(transformer_text_gloss_ncslgr_use_dict_add_word, sentence, src_transform_ncslgr_use_dict_add_word, vocab_transform_trg_ncslgr_use_dict_add_word)
     pred_list = [x for x in pred_text.split(" ") if x]
     gloss_links = get_video_links(pred_text)
     return jsonify({'pred' : pred_text,
                     'pred_list': pred_list,
                     'links': gloss_links})
 
-#@app.route("/links", methods=['POST'])
-#def get_video_links():
+def cosine_similarity(a, b):
+    return np.dot(a,b)/(norm(a)*norm(b))
+
 def get_video_links(glosses):
-    #glosses = request.json["glosses"]
-    #gloss_list = glosses.split(",")
     gloss_list = [x for x in glosses.split(" ") if x]
     ret_json = {}
     for gloss in gloss_list:
         if "IX" in gloss:
             ret_json[gloss] = gloss_to_video["IX"]
+        if "LEARN+AGENT" in gloss:
+            ret_json[gloss] = gloss_to_video["STUDENTneut"]
+        if "TEACH+AGENT" in gloss:
+            ret_json[gloss] = gloss_to_video["TEACHER"]
         else:
             if gloss in gloss_to_video:
                 ret_json[gloss] = gloss_to_video[gloss]
