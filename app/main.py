@@ -18,7 +18,7 @@ from translate import *
 app = Flask(__name__)
 CORS(app)
 
-with open('/app/gloss_to_video.json', 'r') as f:
+with open('/app/gloss_to_video_allLocal.json', 'r') as f:
   gloss_to_video = json.load(f)
 
 with open('/app/asl_dict_text_gloss_with_custom_entries.json', 'r') as f:
