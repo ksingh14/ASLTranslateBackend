@@ -46,9 +46,9 @@ model_st = SentenceTransformer('all-MiniLM-L6-v2')
 # transformer_ncslgr_use_dict_text_gloss_state = torch.load('transformer_ncslgr_augmented_use_asl_dict_text_to_gloss_90epochs.pt', map_location=torch.device('cpu'))
 
 # NCSLGR dataset w/ dictionary words & adding word text -> gloss
-vocab_transform_src_ncslgr_use_dict_add_word = torch.load('ncslgr_augmented_use_asl_dict_add_word_2_vocab_transform_src_text_to_gloss_pt2.pth')
-vocab_transform_trg_ncslgr_use_dict_add_word = torch.load('ncslgr_augmented_use_asl_dict_add_word_2_vocab_transform_trg_text_to_gloss_pt2.pth')
-transformer_ncslgr_use_dict_add_word_text_gloss_state = torch.load('transformer_ncslgr_augmented_use_asl_dict_add_word_text_to_gloss_2_pt2_40epochs.pt', map_location=torch.device('cpu'))
+vocab_transform_src_ncslgr_use_dict_add_word = torch.load('ncslgr_augmented_use_asl_dict_add_word_2_vocab_transform_src_text_to_gloss_pt3.pth')
+vocab_transform_trg_ncslgr_use_dict_add_word = torch.load('ncslgr_augmented_use_asl_dict_add_word_2_vocab_transform_trg_text_to_gloss_pt3.pth')
+transformer_ncslgr_use_dict_add_word_text_gloss_state = torch.load('transformer_ncslgr_augmented_use_asl_dict_add_word_text_to_gloss_2_pt3_40epochs.pt', map_location=torch.device('cpu'))
 
 torch.manual_seed(0)
 
@@ -144,13 +144,14 @@ src_transform_ncslgr_use_dict_add_word = get_transformation_fn(token_transform, 
 def translate_text_ncslgr_use_dict_add_word():
     print("Translating with NCSLGR model with dict words and adding word")
     sentence = request.json["sentence"]
+
     tokens = nlp(sentence)
     tokens_no_punct = [x.text for x in tokens if x.pos_ != "PUNCT"]
     tokens_no_punct_lemmas = [x.lemma_ for x in tokens if x.pos_ != "PUNCT"]
-    sentence = " ".join(tokens_no_punct)
-    sentence_lemmas = " ".join(tokens_no_punct_lemmas)
-    if sentence in asl_dict_text_gloss or sentence.lower() in asl_dict_text_gloss or sentence_lemmas in asl_dict_text_gloss:
-        glosses = asl_dict_text_gloss.get(sentence) or asl_dict_text_gloss.get(sentence.lower())
+    sentence_tokens = " ".join(tokens_no_punct)
+    sentence_tokens_lemmas = " ".join(tokens_no_punct_lemmas)
+    if sentence_tokens in asl_dict_text_gloss or sentence_tokens.lower() in asl_dict_text_gloss or sentence_tokens_lemmas in asl_dict_text_gloss:
+        glosses = asl_dict_text_gloss.get(sentence_tokens) or asl_dict_text_gloss.get(sentence_tokens.lower()) or asl_dict_text_gloss.get(sentence_tokens_lemmas)
         max_cs = None
         best_gloss  = None
         for gloss in glosses:

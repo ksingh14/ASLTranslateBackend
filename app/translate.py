@@ -48,7 +48,11 @@ def translate_sentence(model: torch.nn.Module, src_sentence: str, src_transform,
     append_to_prev_token = False
     for i in range(len(pred_tokens)):
       # token that is ONLY special characters (e.g. ":", "-")
-      if re.fullmatch(special_tokens_pattern, pred_tokens[i]):
+      if (pred_tokens[i] == "DO+++"):
+         continue
+      elif (pred_tokens[i] == "#" and i+1 < len(pred_tokens) and pred_tokens[i+1] == "DO+++"):
+          processed_tokens.append(pred_tokens[i] + pred_tokens[i+1])
+      elif re.fullmatch(special_tokens_pattern, pred_tokens[i]):
         # append special token to previous processed token
         # this way, we can form long tokens like IX-loc:i
         token = processed_tokens[-1] + pred_tokens[i]
