@@ -184,6 +184,8 @@ def get_video_links(glosses):
             ret_json[gloss] = gloss_to_video["TEACHER"]
         if "DEAF" in gloss:
             ret_json[gloss] = gloss_to_video["DEAFb"]
+        if "HOPE" in gloss:
+            ret_json[gloss] = gloss_to_video["HOPEnoix"]
         else:
             if gloss in gloss_to_video:
                 ret_json[gloss] = gloss_to_video[gloss]
