@@ -161,8 +161,10 @@ def translate_text_ncslgr_use_dict_add_word():
                 best_gloss = gloss
         pred_text = best_gloss
     else:
-        sentence.replace("Deaf", "deaf")
+        sentence = sentence.replace("Deaf", "deaf")
         pred_text= translate_sentence(transformer_text_gloss_ncslgr_use_dict_add_word, sentence, src_transform_ncslgr_use_dict_add_word, vocab_transform_trg_ncslgr_use_dict_add_word)
+    if "EVERYONE" in pred_text:
+        pred_text = pred_text.replace("EVERYONE", "EACH+ONE")
     pred_list = [x for x in pred_text.split(" ") if x]
     gloss_links = get_video_links(pred_text)
     return jsonify({'pred' : pred_text,
@@ -186,6 +188,8 @@ def get_video_links(glosses):
             ret_json[gloss] = gloss_to_video["DEAFb"]
         if "HOPE" in gloss:
             ret_json[gloss] = gloss_to_video["HOPEnoix"]
+        if "EACH+ONE" in gloss:
+            ret_json[gloss] = gloss_to_video["EACH-OTHER"]
         else:
             if gloss in gloss_to_video:
                 ret_json[gloss] = gloss_to_video[gloss]
